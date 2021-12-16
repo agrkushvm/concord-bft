@@ -102,11 +102,19 @@ void ClientRequestMsg::validateImp(const ReplicasInfo& repInfo) const {
   const auto* header = msgBody();
   PrincipalId clientId = header->idOfClientProxy;
   if ((header->flags & RECONFIG_FLAG) == 0) ConcordAssert(this->senderId() != repInfo.myId());
+
+  const auto msgSize = size();
+  std::stringstream msg;
+  // Check message size is greater than muinimum header size
+  if (size() < sizeof(ClientRequestMsgHeader) + spanContextSize()) {
+    msg << "Invalid Message Size ";
+    LOG_ERROR(GL, msg.str());
+    throw std::runtime_error(msg.str());
+  }
+
   /// to do - should it be just the header?
   auto minMsgSize = sizeof(ClientRequestMsgHeader) + header->cidLength + spanContextSize() + header->reqSignatureLength;
-  const auto msgSize = size();
   uint16_t expectedSigLen = 0;
-  std::stringstream msg;
   auto sigManager = SigManager::instance();
   bool isClientTransactionSigningEnabled = sigManager->isClientTransactionSigningEnabled();
   bool isIdOfExternalClient = repInfo.isIdOfExternalClient(clientId);
